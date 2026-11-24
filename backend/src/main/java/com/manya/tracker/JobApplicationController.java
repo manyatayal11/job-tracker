@@ -1,6 +1,7 @@
 package com.manya.tracker;
 
-import org.springframework.http.ResponseEntity;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
@@ -8,40 +9,32 @@ import java.util.List;
 @RequestMapping("/api/applications")
 public class JobApplicationController {
 
-    private final JobApplicationRepository repo;
+    private final JobApplicationService service;
 
-    public JobApplicationController(JobApplicationRepository repo) {
-        this.repo = repo;
+    public JobApplicationController(JobApplicationService service) {
+        this.service = service;
     }
 
     @GetMapping
-    public List<JobApplication> getAll() {
-        return repo.findAll();
+    public List<ApplicationResponse> getAll() {
+        return service.getAll();
     }
 
     @PostMapping
-    public JobApplication create(@RequestBody JobApplication app) {
-        return repo.save(app);
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApplicationResponse create(@Valid @RequestBody ApplicationRequest req) {
+        return service.create(req);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<JobApplication> update(@PathVariable Long id,
-                                                 @RequestBody JobApplication updated) {
-        return repo.findById(id).map(existing -> {
-            existing.setCompany(updated.getCompany());
-            existing.setRole(updated.getRole());
-            existing.setStatus(updated.getStatus());
-            existing.setAppliedDate(updated.getAppliedDate());
-            existing.setSource(updated.getSource());
-            existing.setNotes(updated.getNotes());
-            return ResponseEntity.ok(repo.save(existing));
-        }).orElse(ResponseEntity.notFound().build());
+    public ApplicationResponse update(@PathVariable Long id,
+                                      @Valid @RequestBody ApplicationRequest req) {
+        return service.update(id, req);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        if (!repo.existsById(id)) return ResponseEntity.notFound().build();
-        repo.deleteById(id);
-        return ResponseEntity.noContent().build();
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable Long id) {
+        service.delete(id);
     }
 }
