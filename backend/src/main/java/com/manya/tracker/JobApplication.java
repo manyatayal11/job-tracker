@@ -25,4 +25,8 @@ public class JobApplication {
     private String notes;
 
     public enum Status { APPLIED, OA, INTERVIEW, OFFER, REJECTED }
+
+    @ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "user_id")
+private User user;
 }
