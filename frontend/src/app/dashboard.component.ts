@@ -1,3 +1,4 @@
+import { CdkDrag, CdkDragDrop, CdkDropList, CdkDropListGroup } from '@angular/cdk/drag-drop';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -24,7 +25,7 @@ function emptyForm() {
 
 @Component({
   selector: 'app-dashboard',
-  imports: [FormsModule],
+  imports:  [FormsModule, CdkDropListGroup, CdkDropList, CdkDrag],
   template: `
     <div class="page">
       <div class="topbar">
@@ -59,12 +60,17 @@ function emptyForm() {
         </form>
       }
 
-      <div class="board">
+            <div class="board" cdkDropListGroup>
         @for (s of statuses; track s.value) {
-          <div class="column">
+          <div
+            class="column"
+            cdkDropList
+            [cdkDropListData]="s.value"
+            (cdkDropListDropped)="drop($event)"
+          >
             <h4>{{ s.label }} ({{ forStatus(s.value).length }})</h4>
             @for (app of forStatus(s.value); track app.id) {
-              <div class="app-card">
+              <div class="app-card" cdkDrag [cdkDragData]="app">
                 <strong>{{ app.company }}</strong>
                 <span>{{ app.role }}</span>
                 @if (app.appliedDate) { <small>Applied: {{ app.appliedDate }}</small> }
@@ -166,12 +172,33 @@ export class DashboardComponent implements OnInit {
     });
   }
 
+    drop(event: CdkDragDrop<Status, Status, Application>) {
+    if (event.previousContainer === event.container) return;
+    this.moveTo(event.item.data, event.container.data);
+  }
+
   changeStatus(app: Application, status: Status) {
+    if (app.status === status) return;
+    this.moveTo(app, status);
+  }
+
+  private moveTo(app: Application, status: Status) {
+    const previous = app.status;
     const { id, ...body } = app;
+
+    // update the screen immediately so it feels instant
+    this.applications.update((list) =>
+      list.map((a) => (a.id === id ? { ...a, status } : a))
+    );
+
     this.api.update(id, { ...body, status }).subscribe({
-      next: (saved) =>
-        this.applications.update((list) => list.map((a) => (a.id === id ? saved : a))),
-      error: (err) => this.error.set(extractError(err)),
+      error: (err) => {
+        // saving failed: put the card back where it was
+        this.applications.update((list) =>
+          list.map((a) => (a.id === id ? { ...a, status: previous } : a))
+        );
+        this.error.set(extractError(err));
+      },
     });
   }
 
